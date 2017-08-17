@@ -20,3 +20,11 @@ Check http://github.com/gdg-x for more information.
 ######The GDG App, GDG[x] are not endorsed and/or supported by Google, the corporation.
 
 &copy; 2013 GDG[x]
+
+### PT-BR ###
+# Projeto Frisbee
+### Mantido pelo GDG[x]
+
+Todo o conteúdo do GDG em um só lugar. O Projeto Frisbee é o resultado dos esforços coordenados do GDG [x] para desenvolver aplicativos que facilitam a descoberta de conteúdo do Google Developer Group enquanto estiverem em movimento.
+O aplicativo GDG possui o Google+ Newsfeed, eventos futuros e informações gerais sobre cada
+captíulo ativo listado no Diretório do grupo do desenvolvedor do Google.
