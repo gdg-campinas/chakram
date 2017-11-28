@@ -1,5 +1,14 @@
 Project Frisbee
 ===============
+
+### PT-BR ###
+# Projeto Frisbee
+### Mantido pelo GDG[x]
+
+Todo o conteúdo do GDG em um só lugar. O Projeto Frisbee é o resultado dos esforços coordenados do GDG [x] para desenvolver aplicativos que facilitam a descoberta de conteúdo do Google Developer Group enquanto estiverem em movimento.
+O aplicativo GDG possui o Google+ Newsfeed, eventos futuros e informações gerais sobre cada
+captíulo ativo listado no Diretório do grupo do desenvolvedor do Google.
+
 ### Powered by GDG[x]
 
 [![Join the chat at https://gitter.im/gdg-x/frisbee](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gdg-x/frisbee?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -88,20 +97,3 @@ When something is pushed to `master` or `release`, after a successful release, i
   - After a successful release, merge `release` branch back into `develop`
 
 ######The GDG App, GDG[x] are not endorsed and/or supported by Google, the corporation.
-
-License
---------
-
-    © 2013-2015 GDG[x]
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
