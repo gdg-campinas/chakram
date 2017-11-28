@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 The GDG Frisbee Project
+ * Copyright 2013-2015 The GDG Frisbee Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * 	http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,21 +16,9 @@
 
 package org.gdg.frisbee.android.api.model;
 
-/**
- * Created with IntelliJ IDEA.
- * User: maui
- * Date: 26.08.13
- * Time: 01:46
- * To change this template use File | Settings | File Templates.
- */
 public class HomeGdgRequest {
-    private String homeGdg;
 
-    public String getHomeGdg() {
-        return homeGdg;
-    }
-
-    public void setHomeGdg(String homeGdg) {
-        this.homeGdg = homeGdg;
+    public HomeGdgRequest(String homeGdg) {
+        String homeGdg1 = homeGdg;
     }
 }

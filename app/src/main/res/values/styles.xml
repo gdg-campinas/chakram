@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <style name="ActionBarPopupThemeOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+  <style name="Widget.GDG.PopupMenu" parent="Widget.AppCompat.Light.PopupMenu">
+    <item name="android:dropDownSelector">?android:selectableItemBackground</item>
+  </style>
+
+  <style name="Widget.GDG.ListView.DropDown" parent="Widget.AppCompat.Light.ListView.DropDown">
+    <item name="android:listSelector">?android:selectableItemBackground</item>
+    <item name="android:divider">@null</item>
+    <item name="android:dividerHeight">0dp</item>
+  </style>
+
+  <style name="TextAppearance.LargePopupMenu" parent="TextAppearance.AppCompat.Widget.PopupMenu.Large">
+    <item name="android:textColor">@color/asbestos</item>
+  </style>
+
+  <style name="TextAppearance.GDG.FloatLabel" parent="TextAppearance.AppCompat.Small">
+    <item name="android:textColor">?colorAccent</item>
+  </style>
+
+  <style name="Widget.GDG.TabLayout" parent="Widget.Design.TabLayout">
+    <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+    <item name="android:background">?colorPrimary</item>
+    <item name="tabIndicatorColor">@color/white</item>
+  </style>
+
+</resources>

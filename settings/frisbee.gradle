@@ -1,0 +1,28 @@
+android {
+    def signingProperties = rootProject.file("settings/signing.properties")
+    signingConfigs {
+        debug {
+            storeFile rootProject.file("settings/debug.keystore")
+        }
+        if (signingProperties.exists()) {
+            Properties props = new Properties()
+            props.load(new FileInputStream(signingProperties))
+            release {
+                storeFile rootProject.file("settings/${props.storeFile}")
+                storePassword props.storePassword
+                keyAlias props.keyAlias
+                keyPassword props.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+
+        release {
+            signingConfig signingProperties.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+}

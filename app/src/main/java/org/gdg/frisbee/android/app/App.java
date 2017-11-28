@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 The GDG Frisbee Project
+ * Copyright 2013-2015 The GDG Frisbee Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * 	http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,166 +16,165 @@
 
 package org.gdg.frisbee.android.app;
 
-import android.app.Application;
-import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
+import android.content.Context;
 import android.location.Location;
 import android.location.LocationListener;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.StrictMode;
-import android.widget.Toast;
 
-import com.google.analytics.tracking.android.GAServiceManager;
-import com.google.analytics.tracking.android.GoogleAnalytics;
-import com.google.analytics.tracking.android.Tracker;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.picasso.LruCache;
+import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.analytics.GoogleAnalytics;
+import com.google.android.gms.analytics.Tracker;
+import com.jakewharton.picasso.OkHttp3Downloader;
+import com.squareup.leakcanary.LeakCanary;
+import com.squareup.leakcanary.RefWatcher;
 import com.squareup.picasso.Picasso;
 
-import java.io.File;
-import java.net.URL;
+import net.danlew.android.joda.JodaTimeAndroid;
 
-import org.acra.ACRA;
-import org.acra.annotation.ReportsCrashes;
-import org.acra.sender.HttpSender;
-import org.gdg.frisbee.android.Const;
+import org.gdg.frisbee.android.BuildConfig;
 import org.gdg.frisbee.android.R;
-import org.gdg.frisbee.android.api.CompatOkHttpLoader;
+import org.gdg.frisbee.android.api.GdeDirectory;
+import org.gdg.frisbee.android.api.GdeDirectoryFactory;
+import org.gdg.frisbee.android.api.GdgXHub;
+import org.gdg.frisbee.android.api.GdgXHubFactory;
+import org.gdg.frisbee.android.api.GitHub;
+import org.gdg.frisbee.android.api.GithubFactory;
+import org.gdg.frisbee.android.api.GroupDirectory;
+import org.gdg.frisbee.android.api.GroupDirectoryFactory;
+import org.gdg.frisbee.android.api.OkClientFactory;
+import org.gdg.frisbee.android.api.PlusApi;
+import org.gdg.frisbee.android.api.PlusApiFactory;
+import org.gdg.frisbee.android.api.PlusImageUrlConverter;
 import org.gdg.frisbee.android.cache.ModelCache;
+import org.gdg.frisbee.android.eventseries.NotificationHandler;
+import org.gdg.frisbee.android.eventseries.TaggedEventSeries;
+import org.gdg.frisbee.android.eventseries.TaggedEventSeriesFactory;
+import org.gdg.frisbee.android.utils.CrashlyticsTree;
+import org.gdg.frisbee.android.utils.FileUtils;
 import org.gdg.frisbee.android.utils.GingerbreadLastLocationFinder;
-import org.gdg.frisbee.android.utils.Utils;
+import org.gdg.frisbee.android.utils.PrefUtils;
 
-import uk.co.senab.bitmapcache.BitmapLruCache;
+import java.io.File;
+import java.util.List;
 
-/**
- * Created with IntelliJ IDEA.
- * User: maui
- * Date: 20.04.13
- * Time: 12:09
- */
+import io.fabric.sdk.android.Fabric;
+import okhttp3.OkHttpClient;
+import timber.log.Timber;
 
-@ReportsCrashes(httpMethod = HttpSender.Method.POST, reportType = HttpSender.Type.JSON, formUri = "https://gdg-x.hp.af.cm/api/v1/crashreport", formKey = "", disableSSLCertValidation = true)
-public class App extends Application implements LocationListener {
+public class App extends BaseApp implements LocationListener {
 
-    private static App mInstance = null;
-    private static boolean mFix = false;
-
-    public static App getInstance() {
-        return mInstance;
-    }
-
-    private BitmapLruCache mBitmapCache;
+    private OkHttpClient okHttpClient;
+    private GroupDirectory groupDirectory;
+    private GdgXHub gdgXHub;
+    private GdeDirectory gdeDirectory;
+    private GitHub gitHub;
+    private PlusApi plusApi;
     private ModelCache mModelCache;
     private Picasso mPicasso;
-    private SharedPreferences mPreferences;
-    private GoogleAnalytics mGaInstance;
     private Tracker mTracker;
     private GingerbreadLastLocationFinder mLocationFinder;
     private Location mLastLocation;
+    private OrganizerChecker mOrganizerChecker;
+    private List<TaggedEventSeries> mTaggedEventSeriesList;
+    private RefWatcher refWatcher;
+
+    public static App from(Context context) {
+        return (App) context.getApplicationContext();
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        if (Const.DEVELOPER_MODE) {
+        if (BuildConfig.DEBUG) {
+            Timber.plant(new Timber.DebugTree());
+
             StrictMode.ThreadPolicy.Builder b = new StrictMode.ThreadPolicy.Builder()
-                    .detectDiskReads()
-                    .detectDiskWrites()
-                    .detectNetwork()
-                    .penaltyLog();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB){
-                    b.penaltyFlashScreen();
-            }
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .penaltyLog()
+                .penaltyFlashScreen();
+
             StrictMode.setThreadPolicy(b.build());
-
+        } else {
+            Fabric.with(this, new Crashlytics());
+            Crashlytics.setString("commitSha", BuildConfig.COMMIT_SHA);
+            Crashlytics.setString("commitTime", BuildConfig.COMMIT_TIME);
+            Timber.plant(new CrashlyticsTree());
         }
 
-        // Initialize ACRA Bugreporting (reports get send to GDG[x] Hub)
-        ACRA.init(this);
-
-        // Workaround for OkHttp Bug #184. Do it only once
-        if(mFix == false) {
-            URL.setURLStreamHandlerFactory(new OkHttpClient());
-            mFix = true;
+        int storedVersionCode = PrefUtils.getVersionCode(this);
+        if (storedVersionCode != 0 && storedVersionCode < BuildConfig.VERSION_CODE) {
+            onAppUpdate(storedVersionCode, BuildConfig.VERSION_CODE);
+            PrefUtils.setVersionCode(this, BuildConfig.VERSION_CODE);
         }
+        okHttpClient = OkClientFactory.provideOkHttpClient(this);
 
-        mInstance = this;
-
-        mPreferences = getSharedPreferences("gdg", MODE_PRIVATE);
-
-        try {
-            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-
-            if(mPreferences.getInt(Const.SETTINGS_VERSION_CODE, 0) < pInfo.versionCode)
-                migrate(mPreferences.getInt(Const.SETTINGS_VERSION_CODE, pInfo.versionCode), pInfo.versionCode);
-
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
-
-        // Initialize ModelCache and Volley
+        // Initialize ModelCache
         getModelCache();
-        getBitmapCache();
-        GdgVolley.init(this);
 
-        mPreferences.edit().putInt(Const.SETTINGS_APP_STARTS, mPreferences.getInt(Const.SETTINGS_APP_STARTS,0)+1).apply();
+        PrefUtils.increaseAppStartCount(this);
 
         // Initialize Picasso
+        OkHttpClient picassoClient = okHttpClient.newBuilder()
+            .cache(OkHttp3Downloader.createDefaultCache(this))
+            .addInterceptor(new PlusImageUrlConverter(getPlusApi()))
+            .build();
         mPicasso = new Picasso.Builder(this)
-                //.downloader(new CompatOkHttpLoader(this))
-                .memoryCache(new LruCache(this))
-                .build();
-        mPicasso.setDebugging(Const.DEVELOPER_MODE);
+            .downloader(new OkHttp3Downloader(picassoClient))
+            .build();
 
-        // Initialize GA
-        mGaInstance = GoogleAnalytics.getInstance(getApplicationContext());
-        mTracker = mGaInstance.getTracker(getString(R.string.ga_trackingId));
-        GAServiceManager.getInstance().setDispatchPeriod(0);
-        mTracker.setAppName(getString(R.string.app_name));
-        mTracker.setAnonymizeIp(true);
-        mGaInstance.setDefaultTracker(mTracker);
+        JodaTimeAndroid.init(this);
 
-        GoogleAnalytics.getInstance(this).setAppOptOut(mPreferences.getBoolean("analytics",false));
+        refWatcher = LeakCanary.install(this);
+
+        mOrganizerChecker = new OrganizerChecker(PrefUtils.prefs(this), getGdgXHub());
+
+        GoogleAnalytics.getInstance(this).setAppOptOut(PrefUtils.isAnalyticsEnabled(this));
 
         // Init LastLocationFinder
         mLocationFinder = new GingerbreadLastLocationFinder(this);
         mLocationFinder.setChangedLocationListener(this);
         updateLastLocation();
+
+        initTaggedEventSeries();
     }
 
-    public void migrate(int oldVersion, int newVersion) {
+    @Override
+    protected void onAppUpdate(int oldVersion, int newVersion) {
+        super.onAppUpdate(oldVersion, newVersion);
 
-        mPreferences.edit().remove(Const.SETTINGS_GCM_REG_ID).apply();
+        File diskCacheLocation = getDiskCacheLocation();
+        FileUtils.deleteDirectory(diskCacheLocation);
+    }
 
-        mPreferences.edit().clear().apply();
-        mPreferences.edit().putBoolean(Const.SETTINGS_FIRST_START, true);
-        String rootDir = null;
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            // SD-card available
-            rootDir = Environment.getExternalStorageDirectory().getAbsolutePath()
-                    + "/Android/data/" + getPackageName() + "/cache";
-        } else {
-            File internalCacheDir = getCacheDir();
-            rootDir = internalCacheDir.getAbsolutePath();
+    /**
+     * Init TaggedEventSeries.
+     */
+    private void initTaggedEventSeries() {
+        mTaggedEventSeriesList = TaggedEventSeriesFactory.createAvailableEventSeries(this);
+
+        updateEventSeriesAlarms();
+
+    }
+
+    private void updateEventSeriesAlarms() {
+        for (TaggedEventSeries eventSeries : currentTaggedEventSeries()) {
+            NotificationHandler notificationHandler = new NotificationHandler(this, eventSeries);
+            if (notificationHandler.shouldSetAlarm()) {
+                notificationHandler.setAlarmForNotification();
+            }
         }
-        deleteDirectory(new File(rootDir));
-
-        Toast.makeText(getApplicationContext(), "Alpha version always resets Preferences on update.", Toast.LENGTH_LONG).show();
-
-        mPreferences.edit().putInt(Const.SETTINGS_VERSION_CODE, newVersion).apply();
     }
 
     public void updateLastLocation() {
-        if(Utils.isEmulator())
-            return;
+        Location loc = mLocationFinder.getLastBestLocation(5000, 60 * 60 * 1000);
 
-        Location loc = mLocationFinder.getLastBestLocation(5000,60*60*1000);
-
-        if(loc != null)
+        if (loc != null) {
             mLastLocation = loc;
+        }
     }
 
     public Location getLastLocation() {
@@ -187,60 +186,40 @@ public class App extends Application implements LocationListener {
     }
 
     public Tracker getTracker() {
+        if (mTracker == null) {
+            // Initialize GA
+            GoogleAnalytics gaInstance = GoogleAnalytics.getInstance(getApplicationContext());
+            mTracker = gaInstance.newTracker(getString(R.string.ga_trackingId));
+
+            mTracker.setAppName(getString(R.string.app_name));
+            mTracker.setAnonymizeIp(true);
+        }
+
         return mTracker;
     }
 
     public ModelCache getModelCache() {
-        if(mModelCache == null) {
+        if (mModelCache == null) {
 
-            File rootDir = null;
-            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-                // SD-card available
-                rootDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
-                        + "/Android/data/" + getPackageName() + "/model_cache/");
-            } else {
-                File internalCacheDir = getCacheDir();
-                rootDir = new File(internalCacheDir.getAbsolutePath() + "/model_cache/");
+            final File rootDir = getDiskCacheLocation();
+
+            ModelCache.Builder builder = new ModelCache.Builder(this)
+                .setMemoryCacheEnabled(true);
+            if (rootDir.mkdirs() || rootDir.isDirectory()) {
+                builder.setDiskCacheEnabled(true)
+                    .setDiskCacheLocation(rootDir);
             }
-
-            rootDir.mkdirs();
-
-            mModelCache = new ModelCache.Builder(getApplicationContext())
-                    .setMemoryCacheEnabled(true)
-                    .setDiskCacheEnabled(true)
-                    .setDiskCacheLocation(rootDir)
-                    .build();
+            mModelCache = builder.build();
         }
         return mModelCache;
     }
 
-    public BitmapLruCache getBitmapCache() {
-        if(mBitmapCache == null) {
-
-            String rootDir = null;
-            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-                // SD-card available
-                rootDir = Environment.getExternalStorageDirectory().getAbsolutePath()
-                        + "/Android/data/" + getPackageName() + "/cache";
-            } else {
-                File internalCacheDir = getCacheDir();
-                rootDir = internalCacheDir.getAbsolutePath();
-            }
-
-            mBitmapCache = new BitmapLruCache.Builder(getApplicationContext())
-                    .setMemoryCacheEnabled(true)
-                    .setMemoryCacheMaxSizeUsingHeapSize()
-                    .build();
+    private File getDiskCacheLocation() {
+        File cacheDir = getExternalCacheDir();
+        if (cacheDir == null) {
+            cacheDir = getCacheDir();
         }
-        return mBitmapCache;
-    }
-
-    private void deleteDirectory(File dir) {
-        if (dir.isDirectory())
-            for (File child : dir.listFiles())
-                deleteDirectory(child);
-
-        dir.delete();
+        return new File(cacheDir, "/model_cache/");
     }
 
     @Override
@@ -258,5 +237,66 @@ public class App extends Application implements LocationListener {
 
     @Override
     public void onProviderDisabled(String s) {
+    }
+
+    public boolean isOrganizer() {
+        return mOrganizerChecker.isOrganizer();
+    }
+
+    public void checkOrganizer(OrganizerChecker.Callbacks responseHandler) {
+        mOrganizerChecker.checkOrganizer(this, responseHandler);
+    }
+
+    public void resetOrganizer() {
+        mOrganizerChecker.resetOrganizer();
+    }
+
+    /**
+     * Return the current list of GDG event series occurring in the world.
+     * This may be empty but cannot be null.
+     *
+     * @return List of current event series.
+     */
+    public List<TaggedEventSeries> currentTaggedEventSeries() {
+        return mTaggedEventSeriesList;
+    }
+
+    public GdgXHub getGdgXHub() {
+        if (gdgXHub == null) {
+            gdgXHub = GdgXHubFactory.provideHubApi(okHttpClient);
+        }
+        return gdgXHub;
+    }
+
+    public GroupDirectory getGroupDirectory() {
+        if (groupDirectory == null) {
+            groupDirectory = GroupDirectoryFactory.provideGroupDirectoryApi(okHttpClient);
+        }
+        return groupDirectory;
+    }
+
+    public GdeDirectory getGdeDirectory() {
+        if (gdeDirectory == null) {
+            gdeDirectory = GdeDirectoryFactory.provideGdeApi(okHttpClient);
+        }
+        return gdeDirectory;
+    }
+
+    public GitHub getGithub() {
+        if (gitHub == null) {
+            gitHub = GithubFactory.provideGitHubApi(okHttpClient);
+        }
+        return gitHub;
+    }
+
+    public PlusApi getPlusApi() {
+        if (plusApi == null) {
+            plusApi = PlusApiFactory.providePlusApi(okHttpClient);
+        }
+        return plusApi;
+    }
+
+    public RefWatcher getRefWatcher() {
+        return refWatcher;
     }
 }

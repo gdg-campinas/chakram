@@ -17,8 +17,6 @@
 package org.gdg.frisbee.android.utils;
 
 
-import java.util.List;
-
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -28,7 +26,12 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+
 import org.gdg.frisbee.android.utils.base.ILastLocationFinder;
+
+import java.util.List;
+
+import timber.log.Timber;
 
 /**
  * Optimized implementation of Last Location Finder for devices running Gingerbread
@@ -43,14 +46,13 @@ import org.gdg.frisbee.android.utils.base.ILastLocationFinder;
  */
 public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 
-    protected static String TAG = "LastLocationFinder";
-    protected static String SINGLE_LOCATION_UPDATE_ACTION = "org.gdg.frisbee.actions.SINGLE_LOCATION_UPDATE_ACTION";
+    private static final String SINGLE_LOCATION_UPDATE_ACTION = "org.gdg.frisbee.actions.SINGLE_LOCATION_UPDATE_ACTION";
 
-    protected PendingIntent singleUpatePI;
-    protected LocationListener locationListener;
-    protected LocationManager locationManager;
-    protected Context context;
-    protected Criteria criteria;
+    private PendingIntent singleUpatePI;
+    private LocationListener locationListener;
+    private LocationManager locationManager;
+    private Context context;
+    private Criteria criteria;
 
     /**
      * Construct a new Gingerbread Last Location Finder.
@@ -58,7 +60,7 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
      */
     public GingerbreadLastLocationFinder(Context context) {
         this.context = context;
-        locationManager = (LocationManager)context.getSystemService(Context.LOCATION_SERVICE);
+        locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         // Coarse accuracy is specified here to get the fastest possible result.
         // The calling Activity will likely (or have already) request ongoing
         // updates using the Fine location provider.
@@ -89,18 +91,17 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
         // note of the most accurate result within the acceptable time limit.
         // If no result is found within maxTime, return the newest Location.
         List<String> matchingProviders = locationManager.getAllProviders();
-        for (String provider: matchingProviders) {
+        for (String provider : matchingProviders) {
             Location location = locationManager.getLastKnownLocation(provider);
             if (location != null) {
                 float accuracy = location.getAccuracy();
                 long time = location.getTime();
 
-                if ((time > minTime && accuracy < bestAccuracy)) {
+                if (time > minTime && accuracy < bestAccuracy) {
                     bestResult = location;
                     bestAccuracy = accuracy;
                     bestTime = time;
-                }
-                else if (time < minTime && bestAccuracy == Float.MAX_VALUE && time > bestTime) {
+                } else if (time < minTime && bestAccuracy == Float.MAX_VALUE && time > bestTime) {
                     bestResult = location;
                     bestTime = time;
                 }
@@ -114,16 +115,14 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
         if (locationListener != null && (bestTime < minTime || bestAccuracy > minDistance)) {
             List<String> providers = locationManager.getProviders(criteria, true);
             try {
-                if (providers != null && providers.size() > 0){
+                if (providers != null && providers.size() > 0) {
 
-                        IntentFilter locIntentFilter = new IntentFilter(SINGLE_LOCATION_UPDATE_ACTION);
-                        context.registerReceiver(singleUpdateReceiver, locIntentFilter);
-                        locationManager.requestSingleUpdate(criteria, singleUpatePI);
+                    IntentFilter locIntentFilter = new IntentFilter(SINGLE_LOCATION_UPDATE_ACTION);
+                    context.registerReceiver(singleUpdateReceiver, locIntentFilter);
+                    locationManager.requestSingleUpdate(criteria, singleUpatePI);
                 }
-            } catch (SecurityException ex) {
-                Log.e(TAG, "fail to request location update, ignore", ex);
-            } catch (IllegalArgumentException ex) {
-                Log.d(TAG, "provider does not exist " + ex.getMessage());
+            } catch (SecurityException | IllegalArgumentException ex) {
+                Timber.e(ex, "fail to request location update, ignore");
             }
         }
 
@@ -136,16 +135,17 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
      * The oneshot location update is returned via the {@link LocationListener}
      * specified in {@link setChangedLocationListener}.
      */
-    protected BroadcastReceiver singleUpdateReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver singleUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             context.unregisterReceiver(singleUpdateReceiver);
 
             String key = LocationManager.KEY_LOCATION_CHANGED;
-            Location location = (Location)intent.getExtras().get(key);
+            Location location = (Location) intent.getExtras().get(key);
 
-            if (locationListener != null && location != null)
+            if (locationListener != null && location != null) {
                 locationListener.onLocationChanged(location);
+            }
 
             locationManager.removeUpdates(singleUpatePI);
         }

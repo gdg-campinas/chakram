@@ -1,3 +1,12 @@
+.gradle
+/local.properties
+/.idea/workspace.xml
+.DS_Store
+
+# ignore crashlytics generated files
+crashlytics-build.properties
+com_crashlytics_export_strings.xml
+
 # built application files
 *.apk
 *.ap_
@@ -23,6 +32,7 @@ default.properties
 *.iml
 gen-external-apklibs
 target
+build
 
 # Output folder
 out/**
@@ -31,3 +41,9 @@ out/**
 .DS_Store
 app/res/values/keys.xml
 *.diff
+
+#Keystores
+release.keystore
+*.p12
+service_account.json
+signing.properties

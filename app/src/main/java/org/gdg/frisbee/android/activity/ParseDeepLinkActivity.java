@@ -3,31 +3,44 @@ package org.gdg.frisbee.android.activity;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.text.TextUtils;
 
-import android.util.Log;
+import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.plus.PlusShare;
+
+import org.gdg.frisbee.android.Const;
 import org.gdg.frisbee.android.app.App;
+import org.gdg.frisbee.android.chapter.MainActivity;
+import org.gdg.frisbee.android.event.EventActivity;
+
+import timber.log.Timber;
 
 public class ParseDeepLinkActivity extends Activity {
-
-    public static final String LOG_TAG = "GDG-ParseDeepLinkActivity";
-    public static final String EVENTS = "events";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Intent target = null;
 
-    String deepLinkId = PlusShare.getDeepLinkId(this.getIntent());
-    Intent target = parseDeepLinkId(deepLinkId);
-    if(target!=null)
+        String deepLinkId = PlusShare.getDeepLinkId(getIntent());
+        if (!TextUtils.isEmpty(deepLinkId)) {
+            target = parseDeepLinkId(deepLinkId);
+        } else {
+            if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
+                target = new Intent();
+                target.setClass(getApplicationContext(), EventActivity.class);
+                target.putExtra(Const.EXTRA_EVENT_ID, getIntent().getData().getLastPathSegment());
+                target.putExtra(Const.EXTRA_SECTION, EventActivity.EventPagerAdapter.SECTION_OVERVIEW);
+            }
+        }
 
-    {
-        startActivity(target);
+        if (target != null && target.resolveActivity(getPackageManager()) != null) {
+            startActivity(target);
+        }
+
+        finish();
     }
-
-    finish();
-
-}
 
     /**
      * Get the intent for an activity corresponding to the deep-link ID.
@@ -35,17 +48,23 @@ public class ParseDeepLinkActivity extends Activity {
      * @param deepLinkId The deep-link ID to parse.
      * @return The intent corresponding to the deep-link ID.
      */
-    private Intent parseDeepLinkId(String deepLinkId) {
+    private Intent parseDeepLinkId(@NonNull String deepLinkId) {
         Intent route = new Intent();
-        Log.d(LOG_TAG, "Deep Link id: " + deepLinkId);
+        Timber.d("Deep Link id: %s", deepLinkId);
         String[] parts = deepLinkId.split("/");
 
-        // Our deep links look like this: /<plusId>/events/<eventId>/join, /join is optional
-        if (parts.length <= 4 && EVENTS.equals(parts[1])) {
-            App.getInstance().getTracker().sendEvent("gplus","deepLink",deepLinkId, 0L);
-            route.setClass(getApplicationContext(), MainActivity.class);
-            route.putExtra(MainActivity.EXTRA_GROUP_ID, parts[0]);
-            route.putExtra(MainActivity.EXTRA_SECTION, MainActivity.SECTION_EVENTS);
+        App.from(this).getTracker().send(new HitBuilders.EventBuilder()
+            .setCategory("gplus")
+            .setAction("deepLink")
+            .setLabel(deepLinkId)
+            .build());
+
+        // Our deep links look like this: https://developers.google.com/events/<eventId>/join,
+        // or <plus_id>/events/<eventId>/join    join is optional
+        if (deepLinkId.startsWith(Const.URL_DEVELOPERS_GOOGLE_COM)) {
+            route.setClass(getApplicationContext(), EventActivity.class);
+            route.putExtra(Const.EXTRA_EVENT_ID, parts[4]);
+            route.putExtra(Const.EXTRA_SECTION, EventActivity.EventPagerAdapter.SECTION_OVERVIEW);
         } else {
             // Fallback to the MainActivity in your app.
             route.setClass(getApplicationContext(), MainActivity.class);

@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 The GDG Frisbee Project
+ * Copyright 2013-2015 The GDG Frisbee Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * 	http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,37 +18,56 @@ package org.gdg.frisbee.android.api.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.annotation.VisibleForTesting;
 
-/**
- * GDG Aachen
- * org.gdg.frisbee.android.api.model
- * <p/>
- * User: maui
- * Date: 21.04.13
- * Time: 22:27
- */
+import com.google.gson.annotations.SerializedName;
+
+import java.util.ArrayList;
+
 public class Chapter implements Comparable<Chapter>, Parcelable {
-    private String status, city, name, gplusId, state, country;
-    private Geo geo;
+    public static final Creator<Chapter> CREATOR = new Creator<Chapter>() {
+        @Override
+        public Chapter createFromParcel(Parcel in) {
+            return new Chapter(in);
+        }
 
-    public Chapter() {
-        name = "";
-        gplusId = "";
+        @Override
+        public Chapter[] newArray(int size) {
+            return new Chapter[size];
+        }
+    };
+    private String status, city, name, state;
+    private Country country;
+    @SerializedName("_id")
+    private String gplusId;
+    private ArrayList<String> organizers;
+    private Geo geo;
+    private String shortName;
+
+    public Chapter(String gplusId) {
+        this("", gplusId);
     }
 
     public Chapter(String name, String gplusId) {
         this.name = name;
         this.gplusId = gplusId;
+        organizers = new ArrayList<>();
     }
 
-    public Chapter(Parcel in) {
+    protected Chapter(Parcel in) {
         name = in.readString();
         status = in.readString();
         city = in.readString();
         gplusId = in.readString();
         state = in.readString();
-        country = in.readString();
+        country = in.readParcelable(Country.class.getClassLoader());
+        organizers = in.createStringArrayList();
         geo = in.readParcelable(Geo.class.getClassLoader());
+        shortName = in.readString();
+    }
+
+    public ArrayList<String> getOrganizers() {
+        return organizers;
     }
 
     public String getStatus() {
@@ -71,7 +90,7 @@ public class Chapter implements Comparable<Chapter>, Parcelable {
         return state;
     }
 
-    public String getCountry() {
+    public Country getCountry() {
         return country;
     }
 
@@ -79,53 +98,67 @@ public class Chapter implements Comparable<Chapter>, Parcelable {
         return geo;
     }
 
+    @VisibleForTesting
+    public void setGeo(Geo geo) {
+        this.geo = geo;
+    }
+
     @Override
     public String toString() {
-        return name.replaceAll("GDG ","");
+        return getShortName();
+    }
+
+    public String getShortName() {
+        if (shortName == null) {
+            shortName = name.replaceAll("GDG ", "").trim();
+        }
+        return shortName;
     }
 
     @Override
     public int compareTo(Chapter o) {
-        return name.compareTo(o.getName());
+        return getShortName().compareTo(o.getShortName());
     }
 
     @Override
     public int describeContents() {
-        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+        return 0;
     }
 
     @Override
-    public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeString(name);
-        parcel.writeString(status);
-        parcel.writeString(city);
-        parcel.writeString(gplusId);
-        parcel.writeString(state);
-        parcel.writeString(country);
-        parcel.writeParcelable(geo,0);
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(name);
+        dest.writeString(status);
+        dest.writeString(city);
+        dest.writeString(gplusId);
+        dest.writeString(state);
+        dest.writeParcelable(country, flags);
+        dest.writeStringList(organizers);
+        dest.writeParcelable(geo, flags);
+        dest.writeString(shortName);
     }
-
-    public static final Parcelable.Creator CREATOR = new Parcelable.Creator() {
-        public Chapter createFromParcel(Parcel in) {
-            return new Chapter(in);
-        }
-
-        public Chapter[] newArray(int size) {
-            return new Chapter[size];
-        }
-    };
 
     @Override
     public boolean equals(Object o) {
-       if(o == null)
-           return false;
+        if (o == null) {
+            return false;
+        }
 
-        if(o instanceof Chapter) {
-            Chapter other = (Chapter)o;
+        if (o instanceof Chapter) {
+            Chapter other = (Chapter) o;
 
             return other.getGplusId().equals(getGplusId());
         }
 
         return false;
+    }
+
+    @Override
+    public int hashCode() {
+        if (getGplusId() != null) {
+            return getGplusId().hashCode();
+        } else {
+            return super.hashCode();
+        }
     }
 }

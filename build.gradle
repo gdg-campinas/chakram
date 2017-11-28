@@ -1,0 +1,82 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        jcenter()
+        maven { url 'https://maven.fabric.io/public' }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.2.2'
+        classpath 'com.google.gms:google-services:3.0.0'
+
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'
+        classpath 'io.fabric.tools:gradle:1.22.0'
+        classpath 'com.github.triplet.gradle:play-publisher:1.2.0-beta1'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.13.0'
+        classpath 'org.ajoberstar:grgit:1.4.1'
+    }
+}
+
+apply plugin: 'com.github.ben-manes.versions'
+
+allprojects {
+    repositories {
+        jcenter()
+        maven { url 'https://maven.fabric.io/public' }
+    }
+
+    task checkstyle(type: Checkstyle) {
+        showViolations = true
+        configFile file("../settings/checkstyle.xml")
+
+        source 'src/main/java'
+        include '**/*.java'
+        exclude '**/gen/**'
+        classpath = files()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+// Define versions in a single place
+ext {
+    ci = "true".equals(System.getenv("CI"))
+    preDexEnabled = "true".equals(System.getProperty("pre-dex", "true"))
+
+    // Manifest version information!
+    versionMajor = 2
+    versionMinor = 6
+    versionPatch = 0
+    versionBuild = 10 // bump for dogfood builds, public betas, etc.
+
+    versionCode = versionMajor * 10000 + versionMinor * 1000 + versionPatch * 100 + versionBuild
+    versionName = "${versionMajor}.${versionMinor}.${versionPatch}"
+
+    // Sdk and tools
+    minSdkVersion = project.hasProperty("minSdk") ? minSdk.trim() : 16
+    targetSdkVersion = 21
+    compileSdkVersion = 24
+    buildToolsVersion = '24.0.3'
+
+    // App dependencies
+    supportLibraryVersion = '24.2.1'
+    playServicesVersion = '9.6.1'
+    butterKnifeVersion = '8.4.0'
+    jodaTimeAndroidVersion = '2.9.4.3'
+    jodaTimeVersion = '2.9.4'
+    leakCanaryVersion = '1.3.1'
+    okHttpVersion = '3.4.1'
+    retrofitVersion = '2.1.0'
+    timberVersion = '4.3.1'
+
+    //test dependencies
+    junitVersion = '4.12'
+    mockitoVersion = '1.10.19'
+    hamcrestVersion = '1.3'
+    robolectricVersion = '3.1.2'
+    runnerVersion = '0.5'
+    rulesVersion = '0.5'
+    espressoVersion = '2.2.2'
+}
