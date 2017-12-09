@@ -20,7 +20,7 @@
   <string name="drawer_close">Close Drawer</string>
   <string name="info">Info</string>
   <string name="events">Events</string>
-  <string name="app_name" translatable="false">GDG</string>
+  <string name="app_name" translatable="false">GDG Chackram</string>
   <string name="add_to_calendar">Add to calendar</string>
   <string name="share_with_googleplus">Share with Google+</string>
   <string name="no_scheduled_events">No events scheduled\nwithin the next 30 days</string>
